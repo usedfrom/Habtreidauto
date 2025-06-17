@@ -13,6 +13,7 @@
   "routes": [
     {
       "src": "/api/save-location",
+      "methods": ["POST"],
       "dest": "/api/index.js"
     },
     {
