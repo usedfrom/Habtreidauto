@@ -12,9 +12,26 @@ const REPO_OWNER = 'ВАШ_ЛОГИН'; // Замените на ваш GitHub �
 const REPO_NAME = 'geo-pdf-tracker'; // Замените на имя вашего репозитория
 const FILE_PATH = 'locations.json'; // Путь к файлу в репозитории
 
+// Проверка доступности маршрута
+app.get('/api/test', (req, res) => {
+    res.json({ success: true, message: 'API is working' });
+});
+
 // Маршрут для сохранения геолокации
 app.post('/save-location', async (req, res) => {
+    console.log('Received request to /save-location:', req.body); // Отладка
+
+    if (!GITHUB_TOKEN) {
+        console.error('GitHub token not configured');
+        return res.status(500).json({ success: false, error: 'GitHub token not configured' });
+    }
+
     const { latitude, longitude } = req.body;
+    if (!latitude || !longitude) {
+        console.error('Invalid coordinates:', req.body);
+        return res.status(400).json({ success: false, error: 'Invalid coordinates' });
+    }
+
     const timestamp = new Date().toISOString();
     const locationData = { latitude, longitude, timestamp };
 
@@ -34,10 +51,9 @@ app.post('/save-location', async (req, res) => {
             );
             const content = Buffer.from(response.data.content, 'base64').toString('utf8');
             locations = JSON.parse(content);
-            sha = response.data.sha; // Получаем SHA для обновления файла
+            sha = response.data.sha;
         } catch (err) {
             if (err.response && err.response.status === 404) {
-                // Если файл не существует, создадим пустой массив
                 locations = [];
             } else {
                 throw err;
@@ -53,7 +69,7 @@ app.post('/save-location', async (req, res) => {
             {
                 message: `Update locations.json with new geolocation data at ${timestamp}`,
                 content: Buffer.from(JSON.stringify(locations, null, 2)).toString('base64'),
-                sha: sha, // Указываем SHA, если файл существует
+                sha: sha,
             },
             {
                 headers: {
@@ -63,11 +79,18 @@ app.post('/save-location', async (req, res) => {
             }
         );
 
+        console.log('Locations saved to GitHub:', locationData); // Отладка
         res.json({ success: true });
     } catch (err) {
-        console.error('Ошибка сохранения:', err);
-        res.status(500).json({ success: false, error: 'Ошибка сервера' });
+        console.error('Ошибка сохранения:', err.message);
+        res.status(500).json({ success: false, error: 'Ошибка сервера: ' + err.message });
     }
+});
+
+// Обработка несуществующих маршрутов
+app.use((req, res) => {
+    console.error('Route not found:', req.url); // Отладка
+    res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 module.exports = app;
