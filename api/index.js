@@ -12,14 +12,15 @@ const REPO_OWNER = 'ВАШ_ЛОГИН'; // Замените на ваш GitHub �
 const REPO_NAME = 'geo-pdf-tracker'; // Замените на имя вашего репозитория
 const FILE_PATH = 'locations.json'; // Путь к файлу в репозитории
 
-// Проверка доступности маршрута
+// Тестовый маршрут для проверки API
 app.get('/api/test', (req, res) => {
+    console.log('Test route accessed');
     res.json({ success: true, message: 'API is working' });
 });
 
 // Маршрут для сохранения геолокации
-app.post('/save-location', async (req, res) => {
-    console.log('Received request to /save-location:', req.body); // Отладка
+app.post('/api/save-location', async (req, res) => {
+    console.log('Received request to /api/save-location:', req.body);
 
     if (!GITHUB_TOKEN) {
         console.error('GitHub token not configured');
@@ -79,7 +80,7 @@ app.post('/save-location', async (req, res) => {
             }
         );
 
-        console.log('Locations saved to GitHub:', locationData); // Отладка
+        console.log('Locations saved to GitHub:', locationData);
         res.json({ success: true });
     } catch (err) {
         console.error('Ошибка сохранения:', err.message);
@@ -89,7 +90,7 @@ app.post('/save-location', async (req, res) => {
 
 // Обработка несуществующих маршрутов
 app.use((req, res) => {
-    console.error('Route not found:', req.url); // Отладка
+    console.error('Route not found:', req.url);
     res.status(404).json({ success: false, error: 'Route not found' });
 });
 
