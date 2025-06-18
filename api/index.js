@@ -19,25 +19,6 @@ app.get('/api/test', (req, res) => {
     });
 });
 
-// Маршрут для сохранения геолокации через Geolocation API
-app.post('/api/save-location', async (req, res) => {
-    console.log('Received request to /api/save-location at', new Date().toISOString(), 'Body:', req.body);
-
-    const { latitude, longitude } = req.body;
-    if (!latitude || !longitude) {
-        console.error('Invalid coordinates:', req.body);
-        return res.status(400).json({ success: false, error: 'Invalid coordinates' });
-    }
-
-    const timestamp = new Date().toISOString();
-    const locationData = { latitude, longitude, timestamp, source: 'geolocation' };
-
-    // Логируем данные в консоль (будут в логах Vercel)
-    console.log('Geolocation data saved:', JSON.stringify(locationData, null, 2));
-
-    res.json({ success: true });
-});
-
 // Маршрут для сохранения геолокации через IP
 app.get('/api/save-ip-location', async (req, res) => {
     const clientIp = req.headers['x-forwarded-for'] || req.ip;
